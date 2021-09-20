@@ -11,6 +11,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
         currentTime(1,1) double = 0;
         currentNode(1,1) SettlementNode
         currentSettlementContext(1,1) SettlementContextEnum = SettlementContextEnum.FastShip
+        currentJ(1,1) double = 0;
     end
     
     properties(Access = protected)
@@ -43,6 +44,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             obj.currentNode = initNode;
             obj.currentTime = 0;
             obj.currentSettlementContext = SettlementContextEnum.FastShip;
+            obj.currentJ = obj.settlementGraph.getObjFunValue();
             
             %set env properties
             obj.starsData = starsData;
@@ -114,7 +116,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
 
                 if(not(isempty(earliestAvailableNode)))
                     time = earliestAvailableNode.settledOn;
-                    star = earliestAvailableNode.star;
+%                     star = earliestAvailableNode.star;
 %                     Observation = obj.getObsInfoForTimeAndStarId(time, star.id);
 
 %                     disp(time);
@@ -123,24 +125,26 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                     obj.currentNode = earliestAvailableNode;
                     obj.currentSettlementContext = newSettlementContext;
                     
+                    deltaJ = obj.settlementGraph.getObjFunValue() - obj.currentJ;
+                    obj.currentJ = obj.settlementGraph.getObjFunValue();
+                    
                     if(time >= 87)
                         IsDone = 1;
                     else
                         IsDone = 0;
                     end
 
-                    Reward = penalty;
-                    if(IsDone)
-                        Reward = Reward + obj.settlementGraph.getObjFunValue();
-                    end
+                    Reward = penalty + deltaJ;
                 else
                     IsDone = 1;
                     
-                    Reward = -penalty;
-                    Reward = Reward + obj.settlementGraph.getObjFunValue();
+                    deltaJ = obj.settlementGraph.getObjFunValue() - obj.currentJ;
+                    obj.currentJ = obj.settlementGraph.getObjFunValue();
+
+                    Reward = penalty + deltaJ;
                 end
-            else
-                Reward = obj.settlementGraph.getObjFunValue();
+            else                    
+                Reward = -0.1;
                 IsDone = 1;
             end
             
@@ -164,6 +168,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             obj.currentNode = initNode;
             obj.currentTime = 0;
             obj.currentSettlementContext = SettlementContextEnum.FastShip;
+            obj.currentJ = obj.settlementGraph.getObjFunValue();
             
             InitialObservation = obj.getObsInfoForTimeAndStarId(initTime, initStarId);
             

@@ -99,9 +99,10 @@ classdef Settlement < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
         function f = deltaVObjFun(obj, x, settledOnTime, starData)
             waitTime = x(1);
             tof = x(2);
+            tStar2 = settledOnTime + waitTime + tof;
             
-            [~, ~, deltaVTotal] = obj.getDeltaVsForX(x, settledOnTime, starData);
-            f = deltaVTotal + (waitTime + tof)/10;
+%             [~, ~, deltaVTotal] = obj.getDeltaVsForX(x, settledOnTime, starData);
+            f = tStar2;
         end
         
         function [c, ceq] = deltaVObjNonlcon(obj, x, settledOnTime, starData)
