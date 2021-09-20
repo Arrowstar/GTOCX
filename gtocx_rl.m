@@ -10,9 +10,9 @@ actInfo = getActionInfo(env);
 validateEnvironment(env);
 
 agent = rlTD3Agent(obsInfo, actInfo);
-agent.AgentOptions.SampleTime = 0.1;
+% agent.AgentOptions.SampleTime = 0.1;
 trainOpts = rlTrainingOptions('MaxEpisodes',100000, 'MaxStepsPerEpisode',1000, 'ScoreAveragingWindowLength',10, 'StopTrainingCriteria','AverageReward', ...
-                              'StopTrainingValue',1000, 'UseParallel',true, "Plots","none");
+                              'StopTrainingValue',1000, 'UseParallel',false, "Plots","none");
 trainOpts.Verbose = true;
 % trainOpts.ParallelizationOptions.Mode = "async";
 
