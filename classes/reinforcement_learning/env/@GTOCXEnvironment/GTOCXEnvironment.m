@@ -101,7 +101,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                 [~, ~, ~, ~, exitflag] = settlement.getOptimizedDeltaV(starData, obj.currentTime);
                                 
                 if(exitflag > 0)
-                    penalty = 0.1;
+                    penalty = 0.0;
                     
                     %Add settlement and settlement node to graph if delta-v
                     %is satisfied
