@@ -107,6 +107,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                     obj.settlementGraph.addSettlement(settlement);
                 else
                     penalty = -0.1;
+                    departNode.remainingSettlements = departNode.remainingSettlements - 1;
                 end
                 
                 [earliestAvailableNode, newSettlementContext] = obj.settlementGraph.getEarliestAvailableNode();

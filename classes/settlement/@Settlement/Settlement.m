@@ -66,16 +66,16 @@ classdef Settlement < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
             fun = @(x) obj.deltaVObjFun(x, settledOnTime, starData);
             x0 = [3.0001, 5];
             lb = [3, 0.01];
-            ub = [10, 40];
+            ub = [10, 90];
             A = [1 1];
             b = 90 - settledOnTime;
             nonlcon = @(x) obj.deltaVObjNonlcon(x, settledOnTime, starData);
             options = optimoptions(@fmincon, 'Display','none', 'MaxIterations',200);
             
-%             [x,~,exitflag,~] = fmincon(fun,x0,[],[],[],[],lb,ub,nonlcon,options);
-            problem = createOptimProblem('fmincon', 'objective',fun, 'x0',x0, 'Aineq',A, 'bineq',b, 'lb',lb, 'ub',ub, 'nonlcon',nonlcon, 'options',options);
-            ms = MultiStart();
-            [x,~,exitflag,~] = run(ms, problem,5);
+            [x,~,exitflag,~] = fmincon(fun,x0,A,b,[],[],lb,ub,nonlcon,options);
+%             problem = createOptimProblem('fmincon', 'objective',fun, 'x0',x0, 'Aineq',A, 'bineq',b, 'lb',lb, 'ub',ub, 'nonlcon',nonlcon, 'options',options);
+%             ms = MultiStart();
+%             [x,~,exitflag,~] = run(ms, problem,5);
             
             [deltaV1, deltaV2, deltaVTotal] = obj.getDeltaVsForX(x, settledOnTime, starData);
             trajOutsideBounds = false;
