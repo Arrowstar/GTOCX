@@ -1,6 +1,7 @@
 clc; clear all; format long g; close all;
 
 addpath(genpath('.'));
+warning('off');
 
 env = GTOCXEnvironment('stars.txt');
 obsInfo = getObservationInfo(env);

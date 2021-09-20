@@ -115,7 +115,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                 if(not(isempty(earliestAvailableNode)))
                     time = earliestAvailableNode.settledOn;
                     star = earliestAvailableNode.star;
-                    Observation = obj.getObsInfoForTimeAndStarId(time, star.id);
+%                     Observation = obj.getObsInfoForTimeAndStarId(time, star.id);
 
 %                     disp(time);
                     
@@ -140,10 +140,11 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                     Reward = Reward + obj.settlementGraph.getObjFunValue();
                 end
             else
-                Observation = obj.getObsInfoForTimeAndStarId(obj.currentTime, obj.currentNode.star.id);
                 Reward = obj.settlementGraph.getObjFunValue();
                 IsDone = 1;
             end
+            
+            Observation = obj.getObsInfoForTimeAndStarId(obj.currentTime, obj.currentNode.star.id);
             
             % (optional) use notifyEnvUpdated to signal that the 
             % environment has been updated (e.g. to update visualization)
