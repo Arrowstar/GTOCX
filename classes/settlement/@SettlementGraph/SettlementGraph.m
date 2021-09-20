@@ -14,34 +14,33 @@ classdef SettlementGraph < matlab.mixin.SetGet
     methods
         function obj = SettlementGraph(initNode, starData)
             obj.starData = starData;
-            
-%             obj.G = digraph();
             obj.addNode(initNode);
         end
         
         function addNode(obj, node)
             obj.nodes(end+1) = node;
-            
-%             newNodeId = sprintf('Star %u', node.star.id);
-%             obj.G = addnode(obj.G, newNodeId);
         end
         
         function addSettlement(obj, settlement)
             obj.settlements(end+1) = settlement;
             settlement.fromNode.addDepartingSettlement(settlement);
-            
-%             fromNodeId = sprintf('Star %u', settlement.fromNode.star.id);
-%             toNodeId = sprintf('Star %u', settlement.toNode.star.id);
-%             obj.G = addedge(obj.G, fromNodeId, toNodeId, settlement.flightTime);
+        end
+        
+        function removeSettlement(obj, settlement)
+            obj.settlements(obj.settlements == settlement) = [];
+            settlement.fromNode.removeDepartingSettlement(settlement);
         end
         
         function [earliestAvailableNode, settlementContext] = getEarliestAvailableNode(obj)           
-            availableNodes = obj.nodes([obj.nodes.remainingSettlements] > 0);
+            availableNodes = obj.nodes([obj.nodes.remainingSettlements] > 0 & [obj.nodes.settledOn] < 87);
             [~,I] = min([availableNodes.settledOn]);
             earliestAvailableNode = availableNodes(I);
             
             if(isempty(earliestAvailableNode))
                 earliestAvailableNode = SettlementNode.empty(1,0);
+                settlementContext = SettlementContextEnum.SettlerShip;
+                
+                return;
             end
             
 %             for(i=1:length(obj.nodes))
@@ -66,17 +65,19 @@ classdef SettlementGraph < matlab.mixin.SetGet
 %                 end
 %             end
             
-            if(earliestAvailableNode.star.id == 0)
-                subSettlements = obj.settlements([obj.settlements.fromNode] == earliestAvailableNode);
-                numSettlementsFromThisNode = numel(subSettlements);
-                
-                if(numSettlementsFromThisNode < 2)
-                    settlementContext = SettlementContextEnum.FastShip;
+            if(not(isempty(earliestAvailableNode)))
+                if(earliestAvailableNode.star.id == 0)
+                    subSettlements = obj.settlements([obj.settlements.fromNode] == earliestAvailableNode);
+                    numSettlementsFromThisNode = numel(subSettlements);
+
+                    if(numSettlementsFromThisNode < 2)
+                        settlementContext = SettlementContextEnum.FastShip;
+                    else
+                        settlementContext = SettlementContextEnum.Mothership;
+                    end
                 else
-                    settlementContext = SettlementContextEnum.Mothership;
+                    settlementContext = SettlementContextEnum.SettlerShip;
                 end
-            else
-                settlementContext = SettlementContextEnum.SettlerShip;
             end
         end
         

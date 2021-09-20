@@ -26,7 +26,8 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             starsData = StarsData(starsDataLoc);
             
             solStar = starsData.getStarForId(0);           
-            initNode = SettlementNode(solStar,-3, 5);
+            initNode = SettlementNode(solStar,5);
+            initNode.settledOn = -3;
             settlementGraph = SettlementGraph(initNode, starsData);
             
             % Initialize Observation settings
@@ -75,54 +76,37 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             starR = Action(1);
             starThetaF = Action(2);
             starIds = obj.starsData.getStarClosestTo(starR, starThetaF);
-            
-            %Process the two continuous actions
-            waitTime = Action(3);
-            flightTime = Action(4);
-                        
+
             %%% Handle colonization
             settledStarIds = obj.settlementGraph.getSettledStarIds();
             I = find(~ismember(starIds, settledStarIds),1,'first');
             starId = starIds(I);
             if(~ismember(starId, settledStarIds))
-                %Get depart and arrive times
-                departTime = obj.currentTime + waitTime;
-                arriveTime = departTime + flightTime;
 
                 %Get Arrive Star
                 arriveStar = obj.starsData.getStarForId(starId);
 
                 %Get depart and arrive nodes
                 departNode = obj.currentNode;
-                arriveNode = SettlementNode(arriveStar, arriveTime, 3);
+                arriveNode = SettlementNode(arriveStar, 3);
 
                 %create settlement
                 context = obj.currentSettlementContext;
-                settlement = Settlement(departNode, arriveNode, departTime, flightTime, context);
-
-                %Add settlement and settlement node to graph
-                obj.settlementGraph.addNode(arriveNode);
-                obj.settlementGraph.addSettlement(settlement);
+                settlement = Settlement(departNode, arriveNode, context);
 
                 %Evaluate DVs                
                 starData = obj.starsData.starsData;
-                [deltaV1, deltaV2, deltaVTotal, trajOutsideBounds] = settlement.getDeltaVsForSettlement(starData, context.maxTotalDv);
-                
-                penalty = 0;
-                if(deltaV1 > context.maxIndivDv)
-                    penalty = penalty + abs(context.maxIndivDv - deltaV1)*10;
-                end
-                
-                if(deltaV2 > context.maxIndivDv)
-                    penalty = penalty + abs(context.maxIndivDv - deltaV2)*10;
-                end
-                
-                if(deltaVTotal > context.maxTotalDv)
-                    penalty = penalty + abs(context.maxTotalDv - deltaVTotal)*10;
-                end
-                
-                if(trajOutsideBounds)
-                    penalty = penalty + 100000;
+                [~, ~, ~, ~, exitflag] = settlement.getOptimizedDeltaV(starData, obj.currentTime);
+                                
+                if(exitflag > 0)
+                    penalty = 0.1;
+                    
+                    %Add settlement and settlement node to graph if delta-v
+                    %is satisfied
+                    obj.settlementGraph.addNode(arriveNode);
+                    obj.settlementGraph.addSettlement(settlement);
+                else
+                    penalty = -0.1;
                 end
                 
                 [earliestAvailableNode, newSettlementContext] = obj.settlementGraph.getEarliestAvailableNode();
@@ -132,7 +116,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                     star = earliestAvailableNode.star;
                     Observation = obj.getObsInfoForTimeAndStarId(time, star.id);
 
-                    disp(time);
+%                     disp(time);
                     
                     obj.currentTime = time;
                     obj.currentNode = earliestAvailableNode;
@@ -144,7 +128,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                         IsDone = 0;
                     end
 
-                    Reward = 0 - penalty;
+                    Reward = penalty;
                     if(IsDone)
                         Reward = Reward + obj.settlementGraph.getObjFunValue();
                     end
@@ -171,7 +155,8 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             initStarId = 0;
             
             solStar = obj.starsData.getStarForId(initStarId);
-            initNode = SettlementNode(solStar,-3, 5);
+            initNode = SettlementNode(solStar, 5);
+            initNode.settledOn = -3;
             obj.settlementGraph = SettlementGraph(initNode, obj.starsData);
             
             obj.currentNode = initNode;
@@ -190,6 +175,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             star = obj.starsData.getStarForId(starId);
             
             obsInfo = {time, rVectKpc, vVectKpcMyr, [star.R; star.thetaF]};
+%             obsInfo = {time, [star.R; star.thetaF]};
             
 %             obsInfoBaseline = obj.getObservationInfo();
 %             lb = [obsInfoBaseline.LowerLimit];
@@ -248,9 +234,9 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
 %             obsInfo = settlementGraph.getGalaxyStarObservationInfo();
 %             ids = obsInfo(2:end,1);
             
-            lb = [2, -180,  3, 1];
-            ub = [32, 180, 13,  20];
-            ActionInfo = rlNumericSpec([1 4], 'LowerLimit',lb, 'UpperLimit',ub);
+            lb = [2, -180];
+            ub = [32, 180];
+            ActionInfo = rlNumericSpec([1 2], 'LowerLimit',lb, 'UpperLimit',ub);
             
 %             ActionInfoStarSelection = rlFiniteSetSpec(ids);
 %             ActionInfoStarSelection.Name = 'Choice of Stars to Settle';

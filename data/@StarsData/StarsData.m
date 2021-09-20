@@ -33,7 +33,7 @@ classdef StarsData < matlab.mixin.SetGet
             
             distVect = allVects - thisVect;
             distances = sqrt(sum(distVect.^2, 1));
-            [sortedDistances,I] = sort(distances);
+            [~,I] = sort(distances);
             starIds = obj.starsData(I,1);
         end
         

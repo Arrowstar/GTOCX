@@ -12,17 +12,22 @@ classdef SettlementNode < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
     end
     
     methods
-        function obj = SettlementNode(star, settledOn, maxNumAllowedDepartures)
+        function obj = SettlementNode(star, maxNumAllowedDepartures)
             if(nargin > 0)
                 obj.star = star;
-                obj.settledOn = settledOn;
                 obj.maxNumAllowedDepartures = maxNumAllowedDepartures;
+                obj.remainingSettlements = maxNumAllowedDepartures;
             end
         end
         
         function addDepartingSettlement(obj, settlement)
             obj.departingSettlement(end+1) = settlement;
             obj.remainingSettlements = obj.remainingSettlements - 1;
+        end
+        
+        function removeDepartingSettlement(obj, settlement)
+            obj.departingSettlement(obj.departingSettlement == settlement) = [];
+            obj.remainingSettlements = obj.remainingSettlements + 1;
         end
     end
     
