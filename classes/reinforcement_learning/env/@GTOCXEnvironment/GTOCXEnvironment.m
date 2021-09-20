@@ -44,7 +44,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             obj.currentNode = initNode;
             obj.currentTime = 0;
             obj.currentSettlementContext = SettlementContextEnum.FastShip;
-            obj.currentJ = obj.settlementGraph.getObjFunValue();
+            obj.currentJ = 0;
             
             %set env properties
             obj.starsData = starsData;
@@ -168,7 +168,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             obj.currentNode = initNode;
             obj.currentTime = 0;
             obj.currentSettlementContext = SettlementContextEnum.FastShip;
-            obj.currentJ = obj.settlementGraph.getObjFunValue();
+            obj.currentJ = 0;
             
             InitialObservation = obj.getObsInfoForTimeAndStarId(initTime, initStarId);
             
