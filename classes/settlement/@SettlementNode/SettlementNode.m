@@ -29,6 +29,13 @@ classdef SettlementNode < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
             obj.departingSettlement(obj.departingSettlement == settlement) = [];
             obj.remainingSettlements = obj.remainingSettlements + 1;
         end
+        
+        function [R, theta] = getRTheta(obj, starsData)
+             [rVectKpc, ~] = getStarPositionKpcMyr(obj.star.id, obj.settledOn, starsData);
+            
+            [theta,~,R] = cart2sph(rVectKpc(1), rVectKpc(2), rVectKpc(3));        
+            theta = rad2deg(theta);
+        end
     end
     
     methods(Access=protected)

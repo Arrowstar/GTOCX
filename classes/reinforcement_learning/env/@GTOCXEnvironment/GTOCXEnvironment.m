@@ -12,6 +12,8 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
         currentNode(1,1) SettlementNode
         currentSettlementContext(1,1) SettlementContextEnum = SettlementContextEnum.FastShip
         currentJ(1,1) double = 0;
+        
+        numSteps(1,1) double = 0;
     end
     
     properties(Access = protected)
@@ -55,41 +57,51 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
         % given action for one step.
         function [Observation,Reward,IsDone,LoggedSignals] = step(obj,Action)
             LoggedSignals = [];
+            obj.numSteps = obj.numSteps + 1;
+            if(obj.numSteps > 10)
+                a=1;
+            end
             
             actInfo = obj.getActionInfo();
             
             bool = Action <= actInfo.LowerLimit;
             Action(bool) = actInfo.LowerLimit(bool);
-%             
+            
             bool = Action >= actInfo.UpperLimit;
             Action(bool) = actInfo.UpperLimit(bool);
+
+            deltaR = Action(1);
+            deltaTheta = Action(2);
+            [R, theta] = obj.currentNode.getRTheta(obj.starsData.starsData);
+            jumpR = R + deltaR;
+            jumpTheta = angleNegPiToPi(theta + deltaTheta);
+            starIds = obj.starsData.getStarClosestTo(jumpR, jumpTheta, obj.currentTime);
+
+            settledStarIds = obj.settlementGraph.getSettledStarIds();
+            I = find(~ismember(starIds, settledStarIds),1,'first');
+            starId = starIds(I);
             
             %Process Star ID
 %             a = obj.settlementGraph.getGalaxyStarObservationInfo();
 %             allIds = a(:,1);
-            
+%             
 %             starId = round(Action(1));
 %             if(starId > max(allIds))
 %                 starId = max(allIds);
 %             elseif(starId < min(allIds))
 %                 starId = min(allIds);
 %             end
+%             
+%             settledStarIds = obj.settlementGraph.getSettledStarIds();
 
-            starR = Action(1);
-            starThetaF = Action(2);
-            starIds = obj.starsData.getStarClosestTo(starR, starThetaF);
 
             %%% Handle colonization
-            settledStarIds = obj.settlementGraph.getSettledStarIds();
-            I = find(~ismember(starIds, settledStarIds),1,'first');
-            starId = starIds(I);
+            departNode = obj.currentNode;
             if(~ismember(starId, settledStarIds))
-
                 %Get Arrive Star
                 arriveStar = obj.starsData.getStarForId(starId);
 
                 %Get depart and arrive nodes
-                departNode = obj.currentNode;
                 arriveNode = SettlementNode(arriveStar, 3);
 
                 %create settlement
@@ -98,9 +110,9 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
 
                 %Evaluate DVs                
                 starData = obj.starsData.starsData;
-                [~, ~, ~, ~, exitflag] = settlement.getOptimizedDeltaV(starData, obj.currentTime);
+                [~, ~, ~, trajOutsideBounds, exitflag] = settlement.getOptimizedDeltaV(starData, obj.currentTime);
                                 
-                if(exitflag > 0)
+                if(trajOutsideBounds == false && exitflag > 0)
                     penalty = 0.0;
                     
                     %Add settlement and settlement node to graph if delta-v
@@ -108,7 +120,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                     obj.settlementGraph.addNode(arriveNode);
                     obj.settlementGraph.addSettlement(settlement);
                 else
-                    penalty = -0.1;
+                    penalty = 0.0;
                     departNode.remainingSettlements = departNode.remainingSettlements - 1;
                 end
                 
@@ -144,12 +156,14 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                     Reward = penalty + deltaJ;
                 end
             else                    
-                Reward = -0.1;
-                IsDone = 1;
+                Reward = 0;
+                IsDone = 0;
+                
+                departNode.remainingSettlements = departNode.remainingSettlements - 1;
             end
             
             Observation = obj.getObsInfoForTimeAndStarId(obj.currentTime, obj.currentNode.star.id);
-            
+               
             % (optional) use notifyEnvUpdated to signal that the 
             % environment has been updated (e.g. to update visualization)
             notifyEnvUpdated(obj);
@@ -169,6 +183,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             obj.currentTime = 0;
             obj.currentSettlementContext = SettlementContextEnum.FastShip;
             obj.currentJ = 0;
+            obj.numSteps = 0;
             
             InitialObservation = obj.getObsInfoForTimeAndStarId(initTime, initStarId);
             
@@ -178,10 +193,11 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
         end
         
         function obsInfo = getObsInfoForTimeAndStarId(obj, time, starId)                       
-            [rVectKpc, vVectKpcMyr] = getStarPositionKpcMyr(starId, time, obj.starsData.starsData);
+            [rVectKpc, ~] = getStarPositionKpcMyr(starId, time, obj.starsData.starsData);
             star = obj.starsData.getStarForId(starId);
             
-            obsInfo = {time, rVectKpc, vVectKpcMyr, [star.R; star.thetaF]};
+            [azimuth,elevation,r] = cart2sph(rVectKpc(1), rVectKpc(2), rVectKpc(3));
+            obsInfo = {time, [azimuth;elevation;r], [star.R; star.thetaF]};
 %             obsInfo = {time, [star.R; star.thetaF]};
             
 %             obsInfoBaseline = obj.getObservationInfo();
@@ -209,15 +225,15 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
             ObservationInfoTime.Description = 'Current Time [Myr]';
             ObservationInfo = ObservationInfoTime;
             
-            ObservationInfoCurrentPos = rlNumericSpec([3 1], 'LowerLimit',-32, 'UpperLimit',32);
-            ObservationInfoCurrentPos.Name = 'Current Position [kpc]';
-            ObservationInfoCurrentPos.Description = 'x, y, z [kpc]';
+            ObservationInfoCurrentPos = rlNumericSpec([3 1], 'LowerLimit',[-pi; -pi/2; -32], 'UpperLimit',[pi; pi/2; 32]);
+            ObservationInfoCurrentPos.Name = 'Current Position (sphere)';
+            ObservationInfoCurrentPos.Description = 'Raz, Rel, R [deg, deg, kpc]';
             ObservationInfo(end+1) = ObservationInfoCurrentPos;
             
-            ObservationInfoCurrentVel = rlNumericSpec([3 1], 'LowerLimit',-1, 'UpperLimit',1);
-            ObservationInfoCurrentVel.Name = 'Current Velocity [kpc/Myr]';
-            ObservationInfoCurrentVel.Description = 'vx, vy, vz [kpc/Myr]';
-            ObservationInfo(end+1) = ObservationInfoCurrentVel;
+%             ObservationInfoCurrentVel = rlNumericSpec([3 1], 'LowerLimit',-1, 'UpperLimit',1);
+%             ObservationInfoCurrentVel.Name = 'Current Velocity [kpc/Myr]';
+%             ObservationInfoCurrentVel.Description = 'vx, vy, vz [kpc/Myr]';
+%             ObservationInfo(end+1) = ObservationInfoCurrentVel;
             
             ObservationInfoCurrentStarRThetaF = rlNumericSpec([2 1], 'LowerLimit',[2;-180], 'UpperLimit',[32;180]);
             ObservationInfoCurrentStarRThetaF.Name = 'Current Star R/Theta_F [kpc,deg]';
@@ -241,8 +257,8 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
 %             obsInfo = settlementGraph.getGalaxyStarObservationInfo();
 %             ids = obsInfo(2:end,1);
             
-            lb = [2, -180];
-            ub = [32, 180];
+            lb = [-4, -180];
+            ub = [ 4, 0];
             ActionInfo = rlNumericSpec([1 2], 'LowerLimit',lb, 'UpperLimit',ub);
             
 %             ActionInfoStarSelection = rlFiniteSetSpec(ids);

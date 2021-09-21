@@ -70,15 +70,14 @@ classdef Settlement < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
             A = [1 1];
             b = 90 - settledOnTime;
             nonlcon = @(x) obj.deltaVObjNonlcon(x, settledOnTime, starData);
-            options = optimoptions(@fmincon, 'Display','none', 'MaxIterations',200);
+            options = optimoptions(@fmincon, 'Display','iter', 'MaxIterations',25, 'MaxFunctionEvaluations', 100000, 'FiniteDifferenceStepSize',1E-4);
             
             [x,~,exitflag,~] = fmincon(fun,x0,A,b,[],[],lb,ub,nonlcon,options);
 %             problem = createOptimProblem('fmincon', 'objective',fun, 'x0',x0, 'Aineq',A, 'bineq',b, 'lb',lb, 'ub',ub, 'nonlcon',nonlcon, 'options',options);
-%             ms = MultiStart();
-%             [x,~,exitflag,~] = run(ms, problem,5);
+%             ms = MultiStart('Display','off');
+%             [x,~,exitflag,output,solutions] = run(ms, problem,5);
             
-            [deltaV1, deltaV2, deltaVTotal] = obj.getDeltaVsForX(x, settledOnTime, starData);
-            trajOutsideBounds = false;
+            [deltaV1, deltaV2, deltaVTotal, trajOutsideBounds] = obj.getDeltaVsForX(x, settledOnTime, starData);
             
             waitTime = x(1);
             tof = x(2);
@@ -115,7 +114,7 @@ classdef Settlement < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
             ceq = [];
         end
         
-        function [deltaV1, deltaV2, deltaVTotal] = getDeltaVsForX(obj, x, settledOnTime, starData)
+        function [deltaV1, deltaV2, deltaVTotal, trajOutsideBounds] = getDeltaVsForX(obj, x, settledOnTime, starData)
             starId1 = obj.fromNode.star.id;
             starId2 = obj.toNode.star.id;
             
@@ -128,26 +127,40 @@ classdef Settlement < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
             [~, starvVects] = getStarPositionKpcMyr([starId1;starId2], [tStar1;tStar2], starData);
             
             %Delta-v TM = 1
-            [~, vVect1, ~, vVect2] = gtocxStarKeplerLambert(starId1, tStar1, starId2, tStar2, 1, starData);
+            [rVect11, vVect11, ~, vVect21] = gtocxStarLambert(starId1, tStar1, starId2, tStar2, 1, starData);
             
-            deltaV1(1) = norm(vVect1 - starvVects(:,1));
-            deltaV2(1) = norm(vVect2 - starvVects(:,2));
+            deltaV1(1) = norm(vVect11 - starvVects(:,1));
+            deltaV2(1) = norm(vVect21 - starvVects(:,2));
             deltaVTotal(1) = deltaV1(1) + deltaV2(1);
             
             %Delta-v TM = -1
-            [~, vVect1, ~, vVect2] = gtocxStarKeplerLambert(starId1, tStar1, starId2, tStar2, -1, starData);
-            deltaV1(2) = norm(vVect1 - starvVects(:,1));
-            deltaV2(2) = norm(vVect2 - starvVects(:,2));
+            [rVect12, vVect12, ~, vVect22] = gtocxStarLambert(starId1, tStar1, starId2, tStar2, -1, starData);
+            deltaV1(2) = norm(vVect12 - starvVects(:,1));
+            deltaV2(2) = norm(vVect22 - starvVects(:,2));
             deltaVTotal(2) = deltaV1(2) + deltaV2(2);
             
             if(deltaVTotal(1) < deltaVTotal(2))
                 deltaV1 = deltaV1(1);
                 deltaV2 = deltaV2(1);
                 deltaVTotal = deltaVTotal(1);
+                
+                rVect0 = rVect11;
+                vVect0 = vVect11;
             else
                 deltaV1 = deltaV1(2);
                 deltaV2 = deltaV2(2);
                 deltaVTotal = deltaVTotal(2);
+                
+                rVect0 = rVect12;
+                vVect0 = vVect12;
+            end
+            
+            [~,y, ~,~,~] = propagateBody(tStar1,rVect0,vVect0,tof, [], []);
+
+            radii = rssq(y(:,1:3),2);
+            trajOutsideBounds = false;
+            if(any(radii < 2 | radii > 32))
+                trajOutsideBounds = true;
             end
         end
     end

@@ -105,14 +105,43 @@ classdef SettlementGraph < matlab.mixin.SetGet
         function J = getObjFunValue(obj)
             settledStarIds = obj.getSettledStarIds();
             
-            actualDvs = NaN(numel(obj.settlements),1);
-            maxDvs = NaN(numel(obj.settlements),1);
-            for(i=1:length(obj.settlements))
-                actualDvs(i) = obj.settlements(i).totalDeltaV;
-                maxDvs(i) = obj.settlements(i).maxDeltaV;
+            if(numel(settledStarIds) > 1 && numel(obj.settlements) > 0)
+                actualDvs = NaN(numel(obj.settlements),1);
+                maxDvs = NaN(numel(obj.settlements),1);
+                for(i=1:length(obj.settlements))
+                    actualDvs(i) = obj.settlements(i).totalDeltaV;
+                    maxDvs(i) = obj.settlements(i).maxDeltaV;
+                end
+
+                [J,~,~] = computeMeritFunction(settledStarIds, obj.starData.starsData, actualDvs(:), maxDvs(:));
+            else
+                J = 0;
             end
+        end
+        
+        function plotSettlementGraph(obj)
+            hAx = axes(figure());
+            hold(hAx,'on');
+            axis(hAx,'equal');
+            axis(hAx,'tight');
+            grid(hAx,'minor');
+            xlim(hAx,[-32,32]);
+            ylim(hAx,[-32,32]);
             
-            [J,~,~] = computeMeritFunction(settledStarIds, obj.starData.starsData, actualDvs(:), maxDvs(:));
+            for(i=1:length(obj.settlements))
+                settlement = obj.settlements(i);
+                star1Id = settlement.fromNode.star.id;
+                tStar1 = settlement.fromNode.settledOn;
+                
+                star2Id = settlement.toNode.star.id;
+                tStar2 = settlement.toNode.settledOn;
+                
+                [starrVects, ~] = getStarPositionKpcMyr([star1Id;star2Id], [tStar1;tStar2], obj.starData.starsData);
+                plot3(hAx, starrVects(1,:), starrVects(2,:), starrVects(3,:), 'ro');
+                
+                posDiff = starrVects(:,2) - starrVects(:,1);
+                quiver3(hAx, starrVects(1,1), starrVects(2,1), starrVects(3,1), posDiff(1), posDiff(2), posDiff(3), 'r', 'AutoScale','off');
+            end
         end
     end
 end

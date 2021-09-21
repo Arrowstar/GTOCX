@@ -19,14 +19,19 @@ classdef StarsData < matlab.mixin.SetGet
             star = obj.stars([obj.stars.id] == id);
         end
         
-        function starIds = getStarClosestTo(obj, R, thetaF)
-            allR = obj.starsData(:,2);
+        function starIds = getStarClosestTo(obj, R, theta, evalTime)
+            ids = obj.starsData(:,1);
+            tMyr = evalTime * ones(size(ids));
+            [rVectKpc, ~] = getStarPositionKpcMyr(ids, tMyr, obj.starsData);
+            [allT,~,allR] = cart2sph(rVectKpc(1,:), rVectKpc(2,:), rVectKpc(3,:));
+            
+%             allR = obj.starsData(:,2);
             rNormalized = (allR - min(allR))/(max(allR) - min(allR));
             normR = (R - min(allR))/(max(allR) - min(allR));
             
-            allT = obj.starsData(:,6);
+%             allT = obj.starsData(:,6);
             tNormalized = (allT - min(allT))/(max(allT) - min(allT));
-            normTf = (thetaF - min(allT))/(max(allT) - min(allT));
+            normTf = (theta - min(allT))/(max(allT) - min(allT));
             
             allVects = [rNormalized(:)'; tNormalized(:)'];
             thisVect = [normR;normTf];
@@ -38,7 +43,9 @@ classdef StarsData < matlab.mixin.SetGet
         end
         
         function obsInfo = getTemplateObsMatrix(obj)
-            obsInfo = obj.starsData(:,[1,2,6]);
+            bool = obj.starsData(:,3) > 170;
+            
+            obsInfo = obj.starsData(bool,[1,2,6]);
             obsInfo = [obsInfo, zeros(height(obsInfo),1)];
         end
     end
