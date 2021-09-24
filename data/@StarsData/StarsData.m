@@ -20,7 +20,7 @@ classdef StarsData < matlab.mixin.SetGet
         end
         
         function starIds = getStarClosestTo(obj, R, theta, evalTime)
-            starsSubData = obj.starsData(obj.starsData(:,3)>=175,:);
+            starsSubData = obj.starsData(obj.starsData(:,3)>=170,:);
             
             ids = starsSubData(:,1);
             tMyr = evalTime * ones(size(ids));
