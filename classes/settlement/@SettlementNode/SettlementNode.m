@@ -9,6 +9,8 @@ classdef SettlementNode < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
         maxNumAllowedDepartures(1,1) = 3
         departingSettlement(1,:) Settlement
         remainingSettlements(1,1) double = 3;
+        
+        starBlacklist(:,1) Star
     end
     
     methods

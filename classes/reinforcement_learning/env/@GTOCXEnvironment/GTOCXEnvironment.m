@@ -100,7 +100,8 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
 %             dv2_2 = vVect2_2 - vVectCurrentNode;
             
             settledStarIds = obj.settlementGraph.getSettledStarIds();
-            I = find(~ismember(starIds, settledStarIds),1,'first');
+            BLIds = [obj.currentNode.starBlacklist.id];
+            I = find(~ismember(starIds, settledStarIds) & ~ismember(starIds, BLIds),1,'first');
             starId = starIds(I);
             
             %Process Star ID
@@ -135,15 +136,19 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                 [~, ~, ~, trajOutsideBounds, exitflag] = settlement.getOptimizedDeltaV(starData, obj.currentTime);
                                 
                 if(trajOutsideBounds == false && exitflag > 0) %trajOutsideBounds == false && exitflag > 0
-                    penalty = 0.0;
+                    penalty = 0;
                     
                     %Add settlement and settlement node to graph if delta-v
                     %is satisfied
                     obj.settlementGraph.addNode(arriveNode);
                     obj.settlementGraph.addSettlement(settlement);
+                    
+%                     obj.currentNode.starBlacklist = Star.empty(1,0);
                 else
-                    penalty = 0.0;
-                    departNode.remainingSettlements = departNode.remainingSettlements - 1;
+                    penalty = -0.1;
+%                     departNode.remainingSettlements = departNode.remainingSettlements - 1;
+
+                    obj.currentNode.starBlacklist(end+1) = arriveStar;
                 end
                 
                 [earliestAvailableNode, newSettlementContext] = obj.settlementGraph.getEarliestAvailableNode();
@@ -178,7 +183,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                     Reward = penalty + deltaJ;
                 end
             else                    
-                Reward = 0;
+                Reward = -0.1;
                 IsDone = 0;
                 
                 departNode.remainingSettlements = departNode.remainingSettlements - 1;
@@ -287,8 +292,8 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
 %             theta = rad2deg(theta);
 %             actions = num2cell([theta; R],1);
             
-            lb = [-3, -10];
-            ub = [ 3,  10];
+            lb = [-1, -20];
+            ub = [ 4, -1];
             ActionInfo = rlNumericSpec([1 2], 'LowerLimit',lb, 'UpperLimit',ub);
             
 %             ActionInfoStarSelection = rlFiniteSetSpec(actions);

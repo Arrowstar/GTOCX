@@ -143,5 +143,29 @@ classdef SettlementGraph < matlab.mixin.SetGet
                 quiver3(hAx, starrVects(1,1), starrVects(2,1), starrVects(3,1), posDiff(1), posDiff(2), posDiff(3), 'r', 'AutoScale','off');
             end
         end
+        
+        function plotFinalStarPositionGraph(obj)
+            hAx = polaraxes(figure());
+            hold(hAx,'on');
+            axis(hAx,'tight');
+            grid(hAx,'minor');
+            hAx.RLim = [0, 32];
+            hAx.ThetaLim = [0, 360];
+            
+            starDataArr = obj.starData.starsData;
+            
+            stars = [obj.nodes.star];
+            ids = [stars.id];
+            
+            [rVects, ~] = getStarPositionKpcMyr(ids, 90, starDataArr);
+            [theta,~,R] = cart2sph(rVects(1,:), rVects(2,:), rVects(3,:));
+            
+            polarplot(hAx, theta,R, 'bo');
+        end
+        
+        function makePlots(obj)
+            plotSettlementGraph(obj);
+            plotFinalStarPositionGraph(obj);
+        end
     end
 end
