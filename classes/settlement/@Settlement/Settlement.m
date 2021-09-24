@@ -70,7 +70,7 @@ classdef Settlement < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
             A = [1 1];
             b = 90 - settledOnTime;
             nonlcon = @(x) obj.deltaVObjNonlcon(x, settledOnTime, starData);
-            options = optimoptions(@fmincon, 'Display','iter', 'MaxIterations',25, 'MaxFunctionEvaluations', 100000, 'FiniteDifferenceStepSize',1E-4);
+            options = optimoptions(@fmincon, 'Display','off', 'MaxIterations',100, 'MaxFunctionEvaluations', 100000, 'FiniteDifferenceStepSize',1E-4);
             
             [x,~,exitflag,~] = fmincon(fun,x0,A,b,[],[],lb,ub,nonlcon,options);
 %             problem = createOptimProblem('fmincon', 'objective',fun, 'x0',x0, 'Aineq',A, 'bineq',b, 'lb',lb, 'ub',ub, 'nonlcon',nonlcon, 'options',options);
@@ -127,14 +127,14 @@ classdef Settlement < matlab.mixin.SetGet & matlab.mixin.CustomDisplay
             [~, starvVects] = getStarPositionKpcMyr([starId1;starId2], [tStar1;tStar2], starData);
             
             %Delta-v TM = 1
-            [rVect11, vVect11, ~, vVect21] = gtocxStarLambert(starId1, tStar1, starId2, tStar2, 1, starData);
+            [rVect11, vVect11, ~, vVect21] = gtocxStarKeplerLambert(starId1, tStar1, starId2, tStar2, 1, starData);
             
             deltaV1(1) = norm(vVect11 - starvVects(:,1));
             deltaV2(1) = norm(vVect21 - starvVects(:,2));
             deltaVTotal(1) = deltaV1(1) + deltaV2(1);
             
             %Delta-v TM = -1
-            [rVect12, vVect12, ~, vVect22] = gtocxStarLambert(starId1, tStar1, starId2, tStar2, -1, starData);
+            [rVect12, vVect12, ~, vVect22] = gtocxStarKeplerLambert(starId1, tStar1, starId2, tStar2, -1, starData);
             deltaV1(2) = norm(vVect12 - starvVects(:,1));
             deltaV2(2) = norm(vVect22 - starvVects(:,2));
             deltaVTotal(2) = deltaV1(2) + deltaV2(2);

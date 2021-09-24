@@ -58,25 +58,47 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
         function [Observation,Reward,IsDone,LoggedSignals] = step(obj,Action)
             LoggedSignals = [];
             obj.numSteps = obj.numSteps + 1;
-            if(obj.numSteps > 10)
-                a=1;
-            end
             
-            actInfo = obj.getActionInfo();
+%             disp(Action);
             
-            bool = Action <= actInfo.LowerLimit;
-            Action(bool) = actInfo.LowerLimit(bool);
+%             actInfo = obj.getActionInfo();
             
-            bool = Action >= actInfo.UpperLimit;
-            Action(bool) = actInfo.UpperLimit(bool);
+%             bool = Action <= actInfo.LowerLimit;
+%             Action(bool) = actInfo.LowerLimit(bool);
+%             
+%             bool = Action >= actInfo.UpperLimit;
+%             Action(bool) = actInfo.UpperLimit(bool);
 
             deltaR = Action(1);
             deltaTheta = Action(2);
             [R, theta] = obj.currentNode.getRTheta(obj.starsData.starsData);
             jumpR = R + deltaR;
-            jumpTheta = angleNegPiToPi(theta + deltaTheta);
+            jumpTheta = rad2deg(angleNegPiToPi(deg2rad(theta + deltaTheta)));
             starIds = obj.starsData.getStarClosestTo(jumpR, jumpTheta, obj.currentTime);
 
+%             starIds = obj.starsData.getStarClosestTo(Action(1), Action(2), 90);
+            
+%             star2Id = starIds(1:1000);
+%             star1Id = obj.currentNode.star.id * ones(size(star2Id));
+%             tStar1 = (obj.currentTime+3) * ones(size(star2Id));
+%             tStar2 = tStar1 + 10;
+%             
+%             [~, vVectCurrentNode] = getStarPositionKpcMyr(star1Id(1), tStar1(1), obj.starsData.starsData);
+%             
+%             for(i=1:length(star2Id))
+%                 [~, vVect1_1(:,i), ~, vVect2_1(:,i)] = gtocxStarKeplerLambert(star1Id(i), tStar1(i), star2Id(i), tStar2(i), 1, obj.starsData.starsData);
+%             end
+%             
+%             dv1_1 = vVect1_1 - vVectCurrentNode;
+%             dv2_1 = vVect2_1 - vVectCurrentNode;
+%             
+%             for(i=1:length(star2Id))
+%                 [~, vVect1_2(:,i), ~, vVect2_2(:,i)] = gtocxStarKeplerLambert(star1Id(i), tStar1(i), star2Id(i), tStar2(i), -1, obj.starsData.starsData);
+%             end
+%             
+%             dv1_2 = vVect1_2 - vVectCurrentNode;
+%             dv2_2 = vVect2_2 - vVectCurrentNode;
+            
             settledStarIds = obj.settlementGraph.getSettledStarIds();
             I = find(~ismember(starIds, settledStarIds),1,'first');
             starId = starIds(I);
@@ -112,7 +134,7 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
                 starData = obj.starsData.starsData;
                 [~, ~, ~, trajOutsideBounds, exitflag] = settlement.getOptimizedDeltaV(starData, obj.currentTime);
                                 
-                if(trajOutsideBounds == false && exitflag > 0)
+                if(trajOutsideBounds == false && exitflag > 0) %trajOutsideBounds == false && exitflag > 0
                     penalty = 0.0;
                     
                     %Add settlement and settlement node to graph if delta-v
@@ -255,13 +277,21 @@ classdef GTOCXEnvironment < rl.env.MATLABEnvironment
         
         function ActionInfo = getInitActionInfo(settlementGraph)
 %             obsInfo = settlementGraph.getGalaxyStarObservationInfo();
-%             ids = obsInfo(2:end,1);
             
-            lb = [-4, -180];
-            ub = [ 4, 0];
+%             ids = obsInfo(2:end,1);
+%             times  = 90*ones(size(ids));
+            
+%             [rVectKpc, ~] = getStarPositionKpcMyr(ids, times, settlementGraph.starData.starsData);
+            
+%             [theta,~,R] = cart2sph(rVectKpc(1,:), rVectKpc(2,:), rVectKpc(3,:));        
+%             theta = rad2deg(theta);
+%             actions = num2cell([theta; R],1);
+            
+            lb = [-3, -10];
+            ub = [ 3,  10];
             ActionInfo = rlNumericSpec([1 2], 'LowerLimit',lb, 'UpperLimit',ub);
             
-%             ActionInfoStarSelection = rlFiniteSetSpec(ids);
+%             ActionInfoStarSelection = rlFiniteSetSpec(actions);
 %             ActionInfoStarSelection.Name = 'Choice of Stars to Settle';
 %             ActionInfo = ActionInfoStarSelection;
 %             
